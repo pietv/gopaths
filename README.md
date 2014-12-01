@@ -1,8 +1,8 @@
 gopaths
 =======
-Go packages indexer. It searches for packages in GOROOT and GOPATH and
-then services HTTP requests with full package names in response to
-shorter names. Useful together with 'cd' and 'godoc' commands.
+Go packages indexer service. It searches for Go packages in GOROOT and GOPATH 
+directories and then responds to shorter package paths with full paths.
+Useful together with 'cd' and 'godoc' commands.
 
 Install
 =======
@@ -26,9 +26,9 @@ golang.org/x/tools/present
 
 Search for a directory containing the package:
 ```shell
-$ curl :6118/dirs/present
-/Users/peter/src/golang.org/x/tools/cmd/present
-/Users/peter/src/golang.org/x/tools/present
+$ curl :6118/dirs/rand
+/Users/peter/go/src/crypto/rand
+/Users/peter/go/src/math/rand
 ```
 
 Update the index:
