@@ -1,6 +1,6 @@
 gopaths
 =======
-Go packages indexer service. It searches for Go packages in GOROOT and GOPATH 
+Go packages indexer. It searches for Go packages in GOROOT and GOPATH 
 directories and then responds to shorter package paths with full paths.
 Useful together with 'cd' and 'godoc' commands.
 
