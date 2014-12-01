@@ -1,4 +1,4 @@
-gopaths
+gopaths [![Build Status](https://drone.io/github.com/pietv/gopaths/status.png)](https://drone.io/github.com/pietv/gopaths/latest)
 =======
 Go packages indexer. It searches for Go packages in GOROOT and GOPATH 
 directories and then responds to shorter package paths with full paths.
