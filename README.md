@@ -19,9 +19,10 @@ $ gopaths -http=:6118 &
 
 Search for a package:
 ```shell
-$ curl :6118/imports/present
-golang.org/x/tools/cmd/present
-golang.org/x/tools/present
+$ curl :6118/imports/log
+log
+google.golang.org/appengine/internal/log
+google.golang.org/appengine/log
 ```
 
 Search for a directory containing the package:
