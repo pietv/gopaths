@@ -9,9 +9,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+        "runtime"
 	"path/filepath"
-	"runtime"
-	"strings"
+        "strings"
 	"sync"
 	"time"
 )
@@ -71,7 +71,7 @@ func indexPackages() {
 				valid:      err == nil,
 			})
 
-			return nil
+                        return nil
 		})
 	}
 	log.Printf("Indexed %d directories", len(dirs.index))
@@ -109,7 +109,17 @@ func queryIndex(query string, kind queryKind) (out []string) {
 
 	// Match full names. (e.g., if typed "os", match a package or dir
 	// named "os", but not "paxos").
-	query = "/" + query
+        switch kind {
+        case kindDirs:
+                // Reverse the slashes in Windows.
+                if runtime.GOOS == "windows" {
+                        query = strings.Join(strings.Split(query, "/"), sep)
+                }
+
+                query = sep + query
+        case kindImports:
+                query = "/" + query
+        }
 
 	// Valid paths are the paths with packages.
 	// Invalid paths are subdirectories leading to valid paths.
@@ -125,12 +135,8 @@ func queryIndex(query string, kind queryKind) (out []string) {
 		case kindDirs:
 			if strings.HasSuffix(c.fullPath, query) {
 				path = c.fullPath
-
-				// In Windows, reverse the slashes.
-				if runtime.GOOS == "windows" {
-					path = strings.Join(strings.Split(path, "/"), sep)
-				}
-			}
+                
+                        }
 		}
 
 		if path == "" {
