@@ -9,9 +9,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-        "runtime"
 	"path/filepath"
-        "strings"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -35,8 +35,9 @@ const (
 )
 
 var (
-	httpFlag = flag.String("http", ":6118", "HTTP service address, e.g. ':6118'")
+	httpFlag = flag.String("http", "localhost:6118", "HTTP service address, e.g. 'localhost:6118'")
 	exclFlag = flag.String("exclude", "", "List of directories to exclude from indexing")
+	rootFlag = flag.String("root", "", "List of root directories with go packages")
 
 	dirs index
 
@@ -44,15 +45,22 @@ var (
 	exclusions    = loadExclusions(strings.NewReader(exclusionList))
 )
 
-// indexPackages walks the directory trees rooted at GOROOT and GOPATH
-// and creates an index dirs with path information.
+// indexPackages walks the directory trees and creates an index dirs
+// with path information.
 func indexPackages() {
 	dirs.mu.Lock()
 	defer dirs.mu.Unlock()
 
 	dirs.index = []details{}
 	ctx := build.Default
-	for _, root := range ctx.SrcDirs() {
+
+	roots := []string{}
+	if *rootFlag == "" {
+		roots = ctx.SrcDirs()
+	} else {
+		roots = strings.Split(*rootFlag, string(os.PathListSeparator))
+	}
+	for _, root := range roots {
 		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 			if !info.IsDir() {
 				return nil
@@ -71,7 +79,7 @@ func indexPackages() {
 				valid:      err == nil,
 			})
 
-                        return nil
+			return nil
 		})
 	}
 	log.Printf("Indexed %d directories", len(dirs.index))
@@ -109,17 +117,17 @@ func queryIndex(query string, kind queryKind) (out []string) {
 
 	// Match full names. (e.g., if typed "os", match a package or dir
 	// named "os", but not "paxos").
-        switch kind {
-        case kindDirs:
-                // Reverse the slashes in Windows.
-                if runtime.GOOS == "windows" {
-                        query = strings.Join(strings.Split(query, "/"), sep)
-                }
+	switch kind {
+	case kindDirs:
+		// Reverse the slashes in Windows.
+		if runtime.GOOS == "windows" {
+			query = strings.Join(strings.Split(query, "/"), sep)
+		}
 
-                query = sep + query
-        case kindImports:
-                query = "/" + query
-        }
+		query = sep + query
+	case kindImports:
+		query = "/" + query
+	}
 
 	// Valid paths are the paths with packages.
 	// Invalid paths are subdirectories leading to valid paths.
@@ -135,8 +143,8 @@ func queryIndex(query string, kind queryKind) (out []string) {
 		case kindDirs:
 			if strings.HasSuffix(c.fullPath, query) {
 				path = c.fullPath
-                
-                        }
+
+			}
 		}
 
 		if path == "" {
@@ -177,7 +185,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Println(`gopaths [-http=[HOST]:PORT] [-exclusions FILE]`)
+		fmt.Println(`gopaths [-http=[HOST]:PORT] [-exclusions FILE] [-root DIRS]`)
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
