@@ -56,9 +56,22 @@ func indexPackages() {
 
 	roots := []string{}
 	if *rootFlag == "" {
+		// GOROOT and GOPATH are default roots.
 		roots = ctx.SrcDirs()
 	} else {
-		roots = strings.Split(*rootFlag, string(os.PathListSeparator))
+		seen := map[string]bool{}
+
+		// Remove duplicate directories.
+		for _, dir := range strings.Split(*rootFlag, string(os.PathListSeparator)) {
+			path := filepath.Clean(dir)
+
+			if _, ok := seen[path]; ok {
+				continue
+			}
+			seen[path] = true
+			roots = append(roots, path)
+		}
+
 	}
 	for _, root := range roots {
 		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
