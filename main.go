@@ -16,15 +16,18 @@ import (
 	"time"
 )
 
+type index struct {
+	index      []details
+	rootDirs   []string
+	exclusions map[string]struct{}
+
+	mu sync.RWMutex
+}
+
 type details struct {
 	fullPath   string
 	importPath string
 	valid      bool
-}
-
-type index struct {
-	index []details
-	mu    sync.RWMutex
 }
 
 type queryKind uint
@@ -37,43 +40,19 @@ const (
 var (
 	httpFlag = flag.String("http", "localhost:6118", "HTTP service address, e.g. 'localhost:6118'")
 	exclFlag = flag.String("exclude", "", "List of directories to exclude from indexing")
-	rootFlag = flag.String("root", "", "List of root directories with go packages")
+	rootFlag = flag.String("root", "", "List of root directories containing go packages")
 
-	dirs index
-
-	exclusionList = `.git .hg`
-	exclusions    = loadExclusions(strings.NewReader(exclusionList))
+	defaultExclusions = `.git .hg`
 )
 
-// indexPackages walks the directory trees and creates an index dirs
-// with path information.
-func indexPackages() {
+// Index walks the directory trees and creates an index with path information.
+func (dirs *index) Index() {
 	dirs.mu.Lock()
 	defer dirs.mu.Unlock()
 
 	dirs.index = []details{}
-	ctx := build.Default
 
-	roots := []string{}
-	if *rootFlag == "" {
-		// GOROOT and GOPATH are default roots.
-		roots = ctx.SrcDirs()
-	} else {
-		seen := map[string]bool{}
-
-		// Remove duplicate directories.
-		for _, dir := range strings.Split(*rootFlag, string(os.PathListSeparator)) {
-			path := filepath.Clean(dir)
-
-			if _, ok := seen[path]; ok {
-				continue
-			}
-			seen[path] = true
-			roots = append(roots, path)
-		}
-
-	}
-	for _, root := range roots {
+	for _, root := range dirs.rootDirs {
 		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 			if !info.IsDir() {
 				return nil
@@ -81,11 +60,12 @@ func indexPackages() {
 
 			// Skip directories in the exclusion list.
 			dir := filepath.Base(path)
-			if _, ok := exclusions[dir]; ok {
+			if _, ok := dirs.exclusions[dir]; ok {
 				return filepath.SkipDir
 			}
 
-			p, err := ctx.ImportDir(path, 0)
+			absPath, _ := filepath.Abs(path)
+			p, err := build.Default.ImportDir(absPath, 0)
 			dirs.index = append(dirs.index, details{
 				fullPath:   path,
 				importPath: p.ImportPath,
@@ -98,38 +78,40 @@ func indexPackages() {
 	log.Printf("Indexed %d directories", len(dirs.index))
 }
 
-// updatePackages() updates packages' index at regular intervals.
-func updatePackages() {
+// UpdateIndex() updates packages' index at regular intervals.
+func (dirs index) UpdateIndex() {
 	for {
 		select {
-		case <-time.Tick(10 * time.Minute):
-			indexPackages()
+		case <-time.Tick(45 * time.Minute):
+			dirs.Index()
 		}
 	}
 }
 
-// loadExclusions loads a list of directory names to exclude from indexing.
-func loadExclusions(r io.Reader) map[string]struct{} {
-	exclusions := make(map[string]struct{})
+// Exclusions loads a list of directory names to exclude from indexing.
+func (dirs *index) Exclusions(r io.Reader) {
+	dirs.mu.Lock()
+	defer dirs.mu.Unlock()
+
+	dirs.exclusions = make(map[string]struct{})
 	s := bufio.NewScanner(r)
 	s.Split(bufio.ScanWords)
 
 	for s.Scan() {
-		exclusions[s.Text()] = struct{}{}
+		dirs.exclusions[s.Text()] = struct{}{}
 	}
-	return exclusions
 }
 
-// queryIndex returns a list of absolute directory paths or
+// QueryIndex returns a list of absolute directory paths or
 // full import paths matching a partial path query.
-func queryIndex(query string, kind queryKind) (out []string) {
+func (dirs index) QueryIndex(query string, kind queryKind) (out []string) {
 	dirs.mu.RLock()
 	defer dirs.mu.RUnlock()
 
 	sep := string(os.PathSeparator)
 
 	// Match full names. (e.g., if typed "os", match a package or dir
-	// named "os", but not "paxos").
+	// named "os", but not "paxos".)
 	switch kind {
 	case kindDirs:
 		// Reverse the slashes in Windows.
@@ -179,7 +161,30 @@ func queryIndex(query string, kind queryKind) (out []string) {
 	return
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
+// Roots sets a list of directory paths where Go packages are going to be
+// searched for in.
+func (dirs *index) Roots(roots []string) {
+	dirs.mu.Lock()
+	defer dirs.mu.Unlock()
+
+	dirs.rootDirs = []string{}
+
+	// Remove duplicate directories.
+	seen := map[string]bool{}
+	for _, root := range roots {
+		path := filepath.Clean(root)
+
+		if _, ok := seen[path]; ok {
+			continue
+		}
+		seen[path] = true
+		dirs.rootDirs = append(dirs.rootDirs, path)
+	}
+}
+
+// ServeHTTP implements the http.Handler interface.
+// It responds to HTTP requests.
+func (dirs index) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	query, queryKind := r.URL.Path[1:], kindDirs
 
 	switch strings.Split(query, "/")[0] {
@@ -189,11 +194,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	case "dirs":
 		query = strings.Replace(query, "dirs/", "", 1)
 	case "update":
-		indexPackages()
+		dirs.Index()
 		return
 	}
 
-	fmt.Fprintln(w, strings.Join(queryIndex(query, queryKind), "\n"))
+	fmt.Fprintln(w, strings.Join(dirs.QueryIndex(query, queryKind), "\n"))
 }
 
 func main() {
@@ -204,19 +209,29 @@ func main() {
 	}
 	flag.Parse()
 
+	dirs := index{}
+
 	if *exclFlag != "" {
 		f, err := os.Open(*exclFlag)
 		if err != nil {
 			log.Fatalf("%v\n", err)
 		}
 
-		exclusions = loadExclusions(bufio.NewReader(f))
+		dirs.Exclusions(bufio.NewReader(f))
 		f.Close()
+	} else {
+		dirs.Exclusions(strings.NewReader(defaultExclusions))
 	}
 
-	indexPackages()
-	go updatePackages()
+	if *rootFlag != "" {
+		dirs.Roots(strings.Split(*rootFlag, string(os.PathListSeparator)))
+	} else {
+		dirs.Roots(build.Default.SrcDirs())
+	}
 
-	http.HandleFunc("/", handler)
+	dirs.Index()
+	go dirs.UpdateIndex()
+
+	http.Handle("/", dirs)
 	log.Fatal(http.ListenAndServe(*httpFlag, nil))
 }
