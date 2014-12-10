@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"runtime"
 	"strings"
 	"testing"
@@ -106,6 +106,11 @@ func trimResponse(resp string) string {
 	return strings.Join(strings.Split(strings.Trim(resp, "\n"), "\n"), " ")
 }
 
+// Trim extra '\n' from the responce.
+func trimResponseSlice(resp string) []string {
+	return strings.Split(strings.Trim(resp, "\n"), "\n")
+}
+
 func TestBasic(t *testing.T) {
 	dirs := index{
 		index: basicTestDetails,
@@ -146,19 +151,20 @@ func TestIndexerImports(t *testing.T) {
 	}
 }
 
-// Trim extra '\n' from the responce.
-func trimResponseSlice(resp string) []string {
-	return strings.Split(strings.Trim(resp, "\n"), "\n")
+func convertSlashes(path string) string {
+	sep := string(os.PathSeparator)
+
+	return strings.Join(strings.Split(path, "/"), sep)
 }
 
-func compareSuffixes(actual, out []string) bool {
+func compareDirs(actual, out []string) bool {
 	if len(actual) != len(out) {
-		fmt.Println("YYY")
 		return false
 	}
 	for i, _ := range actual {
-		if !strings.HasSuffix(actual[i], out[i]) {
-			fmt.Println("XXX", actual[i], out[i])
+		if !strings.HasSuffix(
+			convertSlashes(actual[i]),
+			convertSlashes(out[i])) {
 			return false
 		}
 	}
@@ -179,7 +185,7 @@ func TestIndexerDirs(t *testing.T) {
 		rec := httptest.NewRecorder()
 		dirs.ServeHTTP(rec, req)
 
-		if actual := trimResponseSlice(rec.Body.String()); compareSuffixes(actual, test.out) != true {
+		if actual := trimResponseSlice(rec.Body.String()); compareDirs(actual, test.out) != true {
 			t.Errorf("%q: got %q, want %q", test.query, actual, test.out)
 		}
 	}
