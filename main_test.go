@@ -30,7 +30,43 @@ var basicTestDetails = []details{
 	{"./d/d", "d/d", false},
 }
 
-var BasicTests = []struct {
+var IndexerImportsTests = []struct {
+	query string
+	out   string
+}{
+	{"imports/fmt", "fmt"},
+	{"imports/math/rand", "math/rand"},
+	{"imports/rand", "crypto/rand math/rand"},
+	{"imports/template", "html/template text/template"},
+}
+
+var IndexerDirTests = []struct {
+	query string
+	out   []string
+}{
+	{"dirs/fmt", []string{"fmt"}},
+	{"dirs/math/rand", []string{"math/rand"}},
+	{"dirs/cmd/gofmt", []string{"cmd/gofmt"}},
+	{"dirs/rand", []string{"crypto/rand", "math/rand"}},
+	{"dirs/template", []string{"html/template", "text/template"}},
+}
+
+func init() {
+	// Turn off the logger.
+	log.SetOutput(ioutil.Discard)
+}
+
+// Trim extra '\n' from response; translate '\n' to ' '.
+func trimResponse(resp string) string {
+	return strings.Join(strings.Split(strings.Trim(resp, "\n"), "\n"), " ")
+}
+
+// Trim extra '\n' from the response.
+func trimResponseSlice(resp string) []string {
+	return strings.Split(strings.Trim(resp, "\n"), "\n")
+}
+
+var ImportsTests = []struct {
 	query string
 	out   string
 }{
@@ -42,7 +78,32 @@ var BasicTests = []struct {
 	{"imports/c", "a/b/c"},
 	{"imports/c-c/c.c", "c-c/c.c"},
 	{"imports/c.c", "c-c/c.c/c.c"},
+}
 
+func TestImports(t *testing.T) {
+	dirs := index{
+		index: basicTestDetails,
+	}
+
+	for _, test := range ImportsTests {
+		req, err := http.NewRequest("GET", hostPrefix+test.query, nil)
+		if err != nil {
+			t.Errorf("GET %q failed", test.query)
+		}
+
+		rec := httptest.NewRecorder()
+		dirs.ServeHTTP(rec, req)
+
+		if actual := trimResponse(rec.Body.String()); actual != test.out {
+			t.Errorf("%q: got %q, want %q", test.query, actual, test.out)
+		}
+	}
+}
+
+var DirTests = []struct {
+	query string
+	out   string
+}{
 	{"dirs/a", "/root/a/a /root/b/a /root/a"},
 	{"dirs/a/a", "/root/a/a"},
 	{"dirs/b", "/root/a/b"},
@@ -64,59 +125,12 @@ var BasicTests = []struct {
 	{"//import/a", ""},
 }
 
-var IndexerImportsTests = []struct {
-	query string
-	out   string
-}{
-	{"imports/fmt", "fmt"},
-	{"imports/math/rand", "math/rand"},
-	{"imports/rand", "crypto/rand math/rand"},
-	{"imports/template", "html/template text/template"},
-}
-
-var IndexerDirsTests = []struct {
-	query string
-	out   []string
-}{
-	{"dirs/fmt", []string{"fmt"}},
-	{"dirs/math/rand", []string{"math/rand"}},
-	{"dirs/cmd/gofmt", []string{"cmd/gofmt"}},
-	{"dirs/rand", []string{"crypto/rand", "math/rand"}},
-	{"dirs/template", []string{"html/template", "text/template"}},
-}
-
-var ExclusionsTests = []struct {
-	query string
-	out   string
-}{
-	{"imports/math/rand", ""},
-	{"imports/rand", "crypto/rand"},
-	{"imports/io", ""},
-	{"imports/os", "os"},
-	{"imports/os/exec", ""},
-}
-
-func init() {
-	// Turn off the logger.
-	log.SetOutput(ioutil.Discard)
-}
-
-// Trim extra '\n' from responce, convert '\n' to ' '.
-func trimResponse(resp string) string {
-	return strings.Join(strings.Split(strings.Trim(resp, "\n"), "\n"), " ")
-}
-
-// Trim extra '\n' from the responce.
-func trimResponseSlice(resp string) []string {
-	return strings.Split(strings.Trim(resp, "\n"), "\n")
-}
-
-func TestBasic(t *testing.T) {
+func TestDirs(t *testing.T) {
 	dirs := index{
 		index: basicTestDetails,
 	}
 
-	for _, test := range BasicTests {
+	for _, test := range DirTests {
 		req, err := http.NewRequest("GET", hostPrefix+test.query, nil)
 		if err != nil {
 			t.Errorf("GET %q failed", test.query)
@@ -125,7 +139,7 @@ func TestBasic(t *testing.T) {
 		rec := httptest.NewRecorder()
 		dirs.ServeHTTP(rec, req)
 
-		if actual := trimResponse(rec.Body.String()); actual != test.out {
+		if actual := trimResponse(rec.Body.String()); actual != convertSlashes(test.out) {
 			t.Errorf("%q: got %q, want %q", test.query, actual, test.out)
 		}
 	}
@@ -176,7 +190,7 @@ func TestIndexerDirs(t *testing.T) {
 	dirs.Roots([]string{runtime.GOROOT()})
 	dirs.Index()
 
-	for _, test := range IndexerDirsTests {
+	for _, test := range IndexerDirTests {
 		req, err := http.NewRequest("GET", hostPrefix+test.query, nil)
 		if err != nil {
 			t.Errorf("GET %q failed", test.query)
@@ -189,6 +203,17 @@ func TestIndexerDirs(t *testing.T) {
 			t.Errorf("%q: got %q, want %q", test.query, actual, test.out)
 		}
 	}
+}
+
+var ExclusionsTests = []struct {
+	query string
+	out   string
+}{
+	{"imports/math/rand", ""},
+	{"imports/rand", "crypto/rand"},
+	{"imports/io", ""},
+	{"imports/os", "os"},
+	{"imports/os/exec", ""},
 }
 
 func TestExclusions(t *testing.T) {
