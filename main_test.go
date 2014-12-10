@@ -1,11 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -70,7 +70,6 @@ var IndexerImportsTests = []struct {
 }{
 	{"imports/fmt", "fmt"},
 	{"imports/math/rand", "math/rand"},
-	{"imports/cmd/gofmt", "cmd/gofmt"},
 	{"imports/rand", "crypto/rand math/rand"},
 	{"imports/template", "html/template text/template"},
 }
@@ -102,9 +101,9 @@ func init() {
 	log.SetOutput(ioutil.Discard)
 }
 
-// Translate '\n' to ' ' and then trim.
+// Trim extra '\n' from responce, convert '\n' to ' '.
 func trimResponse(resp string) string {
-	return strings.Trim(strings.Join(strings.Split(resp, "\n"), " "), " ")
+	return strings.Join(strings.Split(strings.Trim(resp, "\n"), "\n"), " ")
 }
 
 func TestBasic(t *testing.T) {
@@ -147,12 +146,23 @@ func TestIndexerImports(t *testing.T) {
 	}
 }
 
-func attachGOROOTPrefixes(paths []string) string {
-	fullpaths := []string{}
-	for _, path := range paths {
-		fullpaths = append(fullpaths, filepath.Join(runtime.GOROOT(), "src", path))
+// Trim extra '\n' from the responce.
+func trimResponseSlice(resp string) []string {
+	return strings.Split(strings.Trim(resp, "\n"), "\n")
+}
+
+func compareSuffixes(actual, out []string) bool {
+	if len(actual) != len(out) {
+		fmt.Println("YYY")
+		return false
 	}
-	return strings.Join(fullpaths, " ")
+	for i, _ := range actual {
+		if !strings.HasSuffix(actual[i], out[i]) {
+			fmt.Println("XXX", actual[i], out[i])
+			return false
+		}
+	}
+	return true
 }
 
 func TestIndexerDirs(t *testing.T) {
@@ -169,10 +179,8 @@ func TestIndexerDirs(t *testing.T) {
 		rec := httptest.NewRecorder()
 		dirs.ServeHTTP(rec, req)
 
-		out := attachGOROOTPrefixes(test.out)
-
-		if actual := trimResponse(rec.Body.String()); actual != out {
-			t.Errorf("%q: got %q, want %q", test.query, actual, out)
+		if actual := trimResponseSlice(rec.Body.String()); compareSuffixes(actual, test.out) != true {
+			t.Errorf("%q: got %q, want %q", test.query, actual, test.out)
 		}
 	}
 }
