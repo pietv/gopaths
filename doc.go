@@ -3,7 +3,7 @@
 //
 // Usage: gopaths [-http=[HOST]:PORT] [-root DIRS] [exclusions FILE]
 //
-//   -http="localhost:6118"
+//   -http=":6118"
 // 	Listen on HOST on PORT.
 //
 //   -root=""
@@ -21,7 +21,7 @@
 // If there are many matches, all matches are returned; each on a separate
 // line. If there are no matches, paths leading to the base are returned.
 //
-// For example, if the requested path is “io”, these paths are matched:
+// For example, if the requested path is “io”, this path is matched:
 //
 //   io
 //
