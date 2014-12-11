@@ -41,7 +41,7 @@ func slice(resp string) []string {
 }
 
 // prefixDir appends the prefix to the paths,
-// and also converts the path separators on Windows.
+// and also converts the path separators in Windows.
 func prefixDir(paths []string, prefix string) []string {
 	prefixed := []string{}
 	for _, path := range paths {
@@ -171,9 +171,9 @@ var IndexerImportsTests = []struct {
 }
 
 func TestIndexerImports(t *testing.T) {
-	imps := index{}
-	imps.Roots([]string{"testdata"})
-	imps.Index()
+	dirs := index{}
+	dirs.Roots([]string{"testdata"})
+	dirs.Index()
 
 	for _, test := range IndexerImportsTests {
 		req, err := http.NewRequest("GET", hostPrefix+test.query, nil)
@@ -182,7 +182,7 @@ func TestIndexerImports(t *testing.T) {
 		}
 
 		rec := httptest.NewRecorder()
-		imps.ServeMux().ServeHTTP(rec, req)
+		dirs.ServeMux().ServeHTTP(rec, req)
 
 		out := prefixImp(test.out, packagePrefix)
 
@@ -205,9 +205,9 @@ var IndexerDirTests = []struct {
 }
 
 func TestIndexerDirs(t *testing.T) {
-	imps := index{}
-	imps.Roots([]string{"testdata"})
-	imps.Index()
+	dirs := index{}
+	dirs.Roots([]string{"testdata"})
+	dirs.Index()
 
 	for _, test := range IndexerDirTests {
 		req, err := http.NewRequest("GET", hostPrefix+test.query, nil)
@@ -216,7 +216,7 @@ func TestIndexerDirs(t *testing.T) {
 		}
 
 		rec := httptest.NewRecorder()
-		imps.ServeMux().ServeHTTP(rec, req)
+		dirs.ServeMux().ServeHTTP(rec, req)
 
 		out := prefixDir(test.out, dirPrefix)
 
@@ -239,10 +239,10 @@ var ExclusionsTests = []struct {
 }
 
 func TestExclusions(t *testing.T) {
-	imps := index{}
-	imps.Roots([]string{"testdata"})
-	imps.Exclusions(strings.NewReader(`b c`))
-	imps.Index()
+	dirs := index{}
+	dirs.Roots([]string{"testdata"})
+	dirs.Exclusions(strings.NewReader(`b c`))
+	dirs.Index()
 
 	for _, test := range ExclusionsTests {
 		req, err := http.NewRequest("GET", hostPrefix+test.query, nil)
@@ -251,7 +251,7 @@ func TestExclusions(t *testing.T) {
 		}
 
 		rec := httptest.NewRecorder()
-		imps.ServeMux().ServeHTTP(rec, req)
+		dirs.ServeMux().ServeHTTP(rec, req)
 
 		out := prefixImp(test.out, packagePrefix)
 
@@ -262,12 +262,12 @@ func TestExclusions(t *testing.T) {
 }
 
 func TestDuplicateRoots(t *testing.T) {
-	imps := index{}
-	imps.Roots([]string{
+	dirs := index{}
+	dirs.Roots([]string{
 		"testdata",
 		"testdata",
 	})
-	imps.Index()
+	dirs.Index()
 
 	for _, test := range IndexerImportsTests {
 		req, err := http.NewRequest("GET", hostPrefix+test.query, nil)
@@ -276,12 +276,34 @@ func TestDuplicateRoots(t *testing.T) {
 		}
 
 		rec := httptest.NewRecorder()
-		imps.ServeMux().ServeHTTP(rec, req)
+		dirs.ServeMux().ServeHTTP(rec, req)
 
 		out := prefixImp(test.out, packagePrefix)
 
 		if actual := slice(rec.Body.String()); reflect.DeepEqual(actual, out) != true {
 			t.Errorf("%q: got %q, want %q", test.query, actual, out)
 		}
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	dirs := index{}
+	dirs.Roots([]string{"testdata"})
+	dirs.Index()
+
+	query := "update"
+
+	req, err := http.NewRequest("GET", hostPrefix+query, nil)
+	if err != nil {
+		t.Errorf("GET %q failed", query)
+	}
+
+	rec := httptest.NewRecorder()
+	dirs.ServeMux().ServeHTTP(rec, req)
+
+	out := []string{""}
+
+	if actual := slice(rec.Body.String()); reflect.DeepEqual(actual, out) != true {
+		t.Errorf("%q: got %q, want %q", query, actual, out)
 	}
 }
