@@ -13,21 +13,22 @@ import (
 	"testing"
 )
 
-var (
-	hostPrefix    = "http://localhost:6118/"
-	packagePrefix = "github.com/pietv/gopaths/testdata"
+const (
+	hostPrefix     = "http://localhost:6118/"
+	testdataPrefix = "github.com/pietv/gopaths/testdata"
+	sep            = string(os.PathSeparator)
+)
 
+var (
 	// Package location.
 	dirPrefix = func() string {
-		p, err := build.Default.Import(packagePrefix, "", build.FindOnly)
+		p, err := build.Default.Import(testdataPrefix, "", build.FindOnly)
 		if err != nil {
 			panic(err)
 		}
 
 		return p.Dir
 	}()
-
-	sep = string(os.PathSeparator)
 )
 
 func init() {
@@ -93,20 +94,6 @@ var QueryImportsTests = []struct {
 	{"imports/c.c", []string{"c-c/c.c/c.c"}},
 }
 
-var QueryDirTests = []struct {
-	query string
-	out   []string
-}{
-	{"dirs/a", []string{"/root/a/a", "/root/b/a", "/root/a"}},
-	{"dirs/a/a", []string{"/root/a/a"}},
-	{"dirs/b", []string{"/root/a/b"}},
-	{"dirs/ab", []string{"/root/ab", "/long path/ab/ab"}},
-	{"dirs/a.b", []string{"/long/path/ab/a.b"}},
-	{"dirs/c", []string{"/a/b/c"}},
-	{"dirs/c-c/c.c", []string{"/c-c/c.c"}},
-	{"dirs/c.c", []string{"/c-c/c.c/c.c"}},
-}
-
 func TestQueryImports(t *testing.T) {
 	dirs := index{
 		index: QueryTestDetails,
@@ -125,6 +112,20 @@ func TestQueryImports(t *testing.T) {
 			t.Errorf("%q: got %q, want %q", test.query, actual, test.out)
 		}
 	}
+}
+
+var QueryDirTests = []struct {
+	query string
+	out   []string
+}{
+	{"dirs/a", []string{"/root/a/a", "/root/b/a", "/root/a"}},
+	{"dirs/a/a", []string{"/root/a/a"}},
+	{"dirs/b", []string{"/root/a/b"}},
+	{"dirs/ab", []string{"/root/ab", "/long path/ab/ab"}},
+	{"dirs/a.b", []string{"/long/path/ab/a.b"}},
+	{"dirs/c", []string{"/a/b/c"}},
+	{"dirs/c-c/c.c", []string{"/c-c/c.c"}},
+	{"dirs/c.c", []string{"/c-c/c.c/c.c"}},
 }
 
 func TestQueryDirs(t *testing.T) {
@@ -184,7 +185,32 @@ func TestIndexerImports(t *testing.T) {
 		rec := httptest.NewRecorder()
 		dirs.ServeMux().ServeHTTP(rec, req)
 
-		out := prefixImp(test.out, packagePrefix)
+		out := prefixImp(test.out, testdataPrefix)
+
+		if actual := slice(rec.Body.String()); reflect.DeepEqual(actual, out) != true {
+			t.Errorf("%q: got %q, want %q", test.query, actual, out)
+		}
+	}
+}
+
+func TestDuplicateRoots(t *testing.T) {
+	dirs := index{}
+	dirs.Roots([]string{
+		"testdata",
+		"testdata",
+	})
+	dirs.Index()
+
+	for _, test := range IndexerImportsTests {
+		req, err := http.NewRequest("GET", hostPrefix+test.query, nil)
+		if err != nil {
+			t.Errorf("GET %q failed", test.query)
+		}
+
+		rec := httptest.NewRecorder()
+		dirs.ServeMux().ServeHTTP(rec, req)
+
+		out := prefixImp(test.out, testdataPrefix)
 
 		if actual := slice(rec.Body.String()); reflect.DeepEqual(actual, out) != true {
 			t.Errorf("%q: got %q, want %q", test.query, actual, out)
@@ -253,7 +279,7 @@ func TestExclusions(t *testing.T) {
 		rec := httptest.NewRecorder()
 		dirs.ServeMux().ServeHTTP(rec, req)
 
-		out := prefixImp(test.out, packagePrefix)
+		out := prefixImp(test.out, testdataPrefix)
 
 		if actual := slice(rec.Body.String()); reflect.DeepEqual(actual, out) != true {
 			t.Errorf("%q: got %q, want %q", test.query, actual, out)
@@ -261,32 +287,7 @@ func TestExclusions(t *testing.T) {
 	}
 }
 
-func TestDuplicateRoots(t *testing.T) {
-	dirs := index{}
-	dirs.Roots([]string{
-		"testdata",
-		"testdata",
-	})
-	dirs.Index()
-
-	for _, test := range IndexerImportsTests {
-		req, err := http.NewRequest("GET", hostPrefix+test.query, nil)
-		if err != nil {
-			t.Errorf("GET %q failed", test.query)
-		}
-
-		rec := httptest.NewRecorder()
-		dirs.ServeMux().ServeHTTP(rec, req)
-
-		out := prefixImp(test.out, packagePrefix)
-
-		if actual := slice(rec.Body.String()); reflect.DeepEqual(actual, out) != true {
-			t.Errorf("%q: got %q, want %q", test.query, actual, out)
-		}
-	}
-}
-
-func TestUpdate(t *testing.T) {
+func TestQueryUpdate(t *testing.T) {
 	dirs := index{}
 	dirs.Roots([]string{"testdata"})
 	dirs.Index()

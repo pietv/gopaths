@@ -1,7 +1,7 @@
 // The gopaths server responds to partial path requests with full package
 // import or directory paths, depending on the request type.
 //
-// Usage: gopaths [-http=[HOST]:PORT] [-root DIRS] [exclusions FILE]
+// Usage: gopaths [-http [HOST]:PORT] [-root DIRS] [-exclude FILE]
 //
 //   -http=":6118"
 // 	Listen on HOST on PORT.
