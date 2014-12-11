@@ -63,8 +63,7 @@ func (dirs *index) Index() {
 				return filepath.SkipDir
 			}
 
-			absPath, _ := filepath.Abs(path)
-			p, err := build.Default.ImportDir(absPath, 0)
+			p, err := build.Default.ImportDir(path, 0)
 			dirs.index = append(dirs.index, details{
 				fullPath:   path,
 				importPath: p.ImportPath,
