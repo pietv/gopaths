@@ -17,11 +17,10 @@ import (
 )
 
 type index struct {
+	mu         sync.RWMutex
 	index      []details
 	rootDirs   []string
 	exclusions map[string]struct{}
-
-	mu sync.RWMutex
 }
 
 type details struct {
