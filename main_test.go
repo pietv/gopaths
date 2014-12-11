@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -17,8 +16,14 @@ import (
 var (
 	hostPrefix    = "http://localhost:6118/"
 	packagePrefix = "github.com/pietv/gopaths/testdata"
-	dirPrefix     = func() string {
-		p, _ := build.Default.Import(packagePrefix, "", build.FindOnly)
+
+	// Package location.
+	dirPrefix = func() string {
+		p, err := build.Default.Import(packagePrefix, "", build.FindOnly)
+		if err != nil {
+			panic(err)
+		}
+
 		return p.Dir
 	}()
 
@@ -123,17 +128,20 @@ func TestQueryImports(t *testing.T) {
 }
 
 func TestQueryDirs(t *testing.T) {
-	dirs := index{
-		index: QueryTestDetails,
+	// In Windows, convert indexed directory paths.
+	queryDetails := []details{}
+	for _, data := range QueryTestDetails {
+		fullPath := strings.Join(strings.Split(data.fullPath, "/"), sep)
+		queryDetails = append(queryDetails, details{
+			fullPath:   fullPath,
+			importPath: data.importPath,
+			valid:      data.valid,
+		})
 	}
 
+	dirs := index{index: queryDetails}
+
 	for _, test := range QueryDirTests {
-		query := test.query
-
-		if runtime.GOOS == "windows" {
-			query = strings.Join(strings.Split(query, "/"), sep)
-		}
-
 		req, err := http.NewRequest("GET", hostPrefix+test.query, nil)
 		if err != nil {
 			t.Errorf("GET %q failed", test.query)
