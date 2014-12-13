@@ -197,7 +197,7 @@ func TestDuplicateRoots(t *testing.T) {
 	dirs := index{}
 	dirs.Roots([]string{
 		"testdata",
-		"testdata",
+		"./././testdata",
 	})
 	dirs.Index()
 
@@ -215,6 +215,26 @@ func TestDuplicateRoots(t *testing.T) {
 		if actual := slice(rec.Body.String()); reflect.DeepEqual(actual, out) != true {
 			t.Errorf("%q: got %q, want %q", test.query, actual, out)
 		}
+	}
+}
+
+func TestNonExistentRoot(t *testing.T) {
+	dirs := index{}
+	err := dirs.Roots([]string{
+		"non/existent/path",
+	})
+	if err == nil {
+		t.Errorf("non existent root: Roots should have returned an error")
+	}
+}
+
+func TestNonDirRoot(t *testing.T) {
+	dirs := index{}
+	err := dirs.Roots([]string{
+		"main.go",
+	})
+	if err != os.ErrInvalid {
+		t.Errorf("non dir root: Roots should have returned an error")
 	}
 }
 

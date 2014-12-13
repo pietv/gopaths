@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -102,9 +101,7 @@ func (dirs *index) QueryIndex(query string, kind queryKind) (out []string) {
 	switch kind {
 	case kindDirs:
 		// Reverse the slashes in Windows.
-		if runtime.GOOS == "windows" {
-			query = strings.Join(strings.Split(query, "/"), sep)
-		}
+		query = strings.Join(strings.Split(query, "/"), sep)
 
 		query = sep + query
 	case kindImports:
@@ -156,13 +153,19 @@ func (dirs *index) Roots(roots []string) error {
 
 	dirs.rootDirs = []string{}
 
-	// Remove duplicate directories.
+	// Remove duplicate directories and check for existence.
 	seen := map[string]bool{}
 	for _, root := range roots {
-		absPath, err := filepath.Abs(root)
+		absPath, _ := filepath.Abs(root)
+
+		fi, err := os.Stat(root)
 		if err != nil {
 			return err
 		}
+		if fi.IsDir() == false {
+			return os.ErrInvalid
+		}
+
 		if _, ok := seen[absPath]; ok {
 			continue
 		}
