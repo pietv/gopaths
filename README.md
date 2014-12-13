@@ -1,6 +1,6 @@
 gopaths [![Build Status](https://drone.io/github.com/pietv/gopaths/status.png)](https://drone.io/github.com/pietv/gopaths/latest)
 =======
-Go packages indexer. It searches for Go packages in GOROOT and GOPATH 
+Go packages indexer. It searches for Go packages in GOROOT and GOPATH
 directories and then responds to shorter package paths with full paths.
 Useful together with 'cd' and 'godoc' commands.
 
@@ -15,7 +15,7 @@ Usage
 =====
 Service start:
 ```shell
-$ gopaths -http=:6118 &
+$ nohup gopaths -http=:6118 &
 ```
 
 Search for a package:
