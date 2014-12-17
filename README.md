@@ -1,4 +1,4 @@
-gopaths [![GoDoc](https://godoc.org/github.com/pietv/gopaths?status.png)](https://godoc.org/github.com/pietv/gopaths) [![Build Status](https://drone.io/github.com/pietv/gopaths/status.png)](https://drone.io/github.com/pietv/gopaths/latest)
+gopaths [![GoDoc](https://godoc.org/github.com/pietv/gopaths?status.png)](https://godoc.org/github.com/pietv/gopaths) [![Build Status](https://drone.io/github.com/pietv/gopaths/status.png)](https://drone.io/github.com/pietv/gopaths/latest) [![Build status](https://ci.appveyor.com/api/projects/status/u2xfqdwb6t6c8b35/branch/master?svg=true)](https://ci.appveyor.com/project/pietv/gopaths/branch/master)
 =======
 Go packages indexer. It searches for Go packages in GOROOT and GOPATH
 directories and then responds to shorter package paths with full paths.
