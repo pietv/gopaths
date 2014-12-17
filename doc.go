@@ -19,7 +19,8 @@
 // Paths are matched against the base path (deepest sitting directory):
 //
 // If there are many matches, all matches are returned; each on a separate
-// line. If there are no matches, paths leading to the base are returned.
+// line. If there are no package matches, paths leading to the base path
+// are returned; again, if there are any.
 //
 // For example, if the requested path is “io”, this path is matched:
 //
@@ -39,10 +40,10 @@
 // It's a parent path to many other packages.
 //
 //
-// The paths are queried using a Web browser, most usefully: curl(1) and
-// wget(1), because gopaths is a CLI server.
+// The paths are queried using a Web browser, preferably console one:
+// curl(1) or wget(1), because gopaths is a CLI server.
 //
-// There are three request types, specified by prefixes:
+// There are three request types, specified by path prefixes:
 //
 //   curl :6118/dirs/PATH
 //     Return directory paths matching PATH.
@@ -52,7 +53,7 @@
 //
 //   curl :6118/update
 //     Update the directory index. The directory index updates itself
-//     every 45 minutes, but occasionally faster update might be needed.
+//     every 45 minutes. Occasionally, a faster update might be needed.
 //
 // Examples:
 //
