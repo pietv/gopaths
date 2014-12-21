@@ -45,13 +45,13 @@
 //
 // There are three request types, specified by path prefixes:
 //
-//   curl :6118/dirs/PATH
+//   GET /dirs/{PATH}
 //     Return directory paths matching PATH.
 //
-//   curl :6118/imports/PATH
+//   GET /imports/{PATH}
 //     Return import paths matching PATH.
 //
-//   curl :6118/update
+//   GET /update
 //     Update the directory index. The directory index updates itself
 //     every 45 minutes. Occasionally, a faster update might be needed.
 //
