@@ -22,26 +22,26 @@
 // line. If there are no package matches, paths leading to the base path
 // are returned; again, if there are any.
 //
-// For example, if the requested path is “io”, this path is matched:
+// For example, if the requested path is “io”, this path will be matched:
 //
 //   io
 //
-// but these are not:
+// but these will be not:
 //
 //   bufio
 //   testing/iotest
 //   cmd/internal/rsc.io/x86/x86asm
 //
 // On the other hand, if the requested path is “go.net”, and there are no
-// indexed packages with “go.net” at the end, this path is returned:
+// indexed packages with “go.net” at the end, this path will be returned:
 //
 //   code.google.com/p/go.net
 //
 // It's a parent path to many other packages.
 //
 //
-// The paths are queried using a Web browser, preferably console one:
-// curl(1) or wget(1), because gopaths is a CLI server.
+// The paths are queried using a Web browser, preferably a console one like
+// curl(1) or wget(1), because gopaths is intended to be a CLI server.
 //
 // There are three request types, specified by path prefixes:
 //
