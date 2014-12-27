@@ -15,7 +15,7 @@ Usage
 =====
 Service start:
 ```shell
-$ nohup gopaths -http=:6118 &
+$ gopaths -http=:6118 &
 ```
 
 Search for a package:
